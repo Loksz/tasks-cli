@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tasks-cli"
+version = "0.1.0"
+description = "CLI de Gestión de Tareas con Sincronización entre Dispositivos"
+authors = [{ name = "Sebastián Hernández" }]
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.9",
+    "rich>=13",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+sync = [
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "psycopg2-binary>=2.9",
+    "cryptography>=42",
+]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "mypy",
+    "ruff",
+    "pre-commit",
+]
+
+[project.scripts]
+tasks = "tasks_cli.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["tasks_cli"]
+
+# --- Ruff ---
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["tasks_cli"]
+
+# --- Mypy ---
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+
+# --- Pytest ---
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=tasks_cli --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["tasks_cli"]
+omit = ["tests/*"]

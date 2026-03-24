@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"   # Se activa con tags como v0.1.0, v1.2.3
+
+jobs:
+  build-and-release:
+    name: Build & publish GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # necesario para crear el Release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: pip install build
+
+      - name: Build wheel and sdist
+        run: python -m build
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "TASKS CLI v${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## Instalación
+
+            ```bash
+            pipx install https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/tasks_cli-${{ steps.version.outputs.VERSION }}-py3-none-any.whl
+            ```
+
+            Ver [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) para los cambios de esta versión.
+          files: dist/*
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'a') || contains(github.ref_name, 'b') || contains(github.ref_name, 'rc') }}
