@@ -4,14 +4,19 @@ Herramienta de línea de comandos para gestión de tareas. Funciona completament
 
 ## Instalación
 
+Clona o descarga el repositorio y luego instala en modo editable:
+
 ```bash
-pip install tasks-cli
+git clone https://github.com/tu-usuario/amadeus-task-cli.git
+cd amadeus-task-cli
+pip install -e .
 ```
 
-O con pipx (recomendado para CLIs):
+O si prefieres pipx (recomendado para CLIs):
 
 ```bash
-pipx install tasks-cli
+cd amadeus-task-cli
+pipx install .
 ```
 
 ## Uso
@@ -44,10 +49,10 @@ tasks config    Ver y modificar configuración
 
 ## Sincronización multi-dispositivo (opcional)
 
-Requiere PostgreSQL. Instala las dependencias adicionales:
+Requiere PostgreSQL. Instala con las dependencias adicionales:
 
 ```bash
-pip install 'tasks-cli[sync]'
+pip install -e '.[sync]'
 tasks sync setup --dsn postgresql://user:pass@host:5432/db
 tasks sync push
 tasks sync pull
