@@ -9,7 +9,7 @@ from tasks_cli.config import get_config, save_config
 
 _SYNC_DEPS_MSG = (
     "Las dependencias de sincronización no están instaladas.\n"
-    r"Instálalas con:  pip install 'tasks-cli\[sync]'"
+    r"Instálalas con:  pip install 'tasks-cli[sync]'"
 )
 
 
@@ -21,12 +21,11 @@ def _require_sync_deps() -> None:
         error(_SYNC_DEPS_MSG)
         raise typer.Exit(1)
 
+
 app = typer.Typer(help="Sincronización entre dispositivos")
 
 
 def _encrypt_dsn(dsn: str) -> str:
-    """Cifra el DSN con Fernet antes de guardarlo en disco."""
-
     from cryptography.fernet import Fernet
 
     key_path = _key_path()
@@ -41,55 +40,63 @@ def _encrypt_dsn(dsn: str) -> str:
 
 def _decrypt_dsn(token: str) -> str:
     from cryptography.fernet import Fernet
-    key = _key_path().read_bytes()
-    return Fernet(key).decrypt(token.encode()).decode()
+
+    return Fernet(_key_path().read_bytes()).decrypt(token.encode()).decode()
 
 
 def _key_path():
     from pathlib import Path
+
     return Path.home() / ".tasks" / ".sync.key"
+
+
+def _build_engine(cfg) -> "SyncEngine":  # type: ignore[name-defined]
+    from tasks_cli.db.sqlite import SQLiteRepository
+    from tasks_cli.db.sqlalchemy_repo import SQLAlchemyRepository
+    from tasks_cli.sync.engine import SyncEngine
+
+    local = SQLiteRepository(cfg.db_path)
+    remote = SQLAlchemyRepository(_decrypt_dsn(cfg.remote_dsn))
+    return SyncEngine(local, remote), local, remote
 
 
 @app.command()
 def setup(
-    dsn: str = typer.Option(..., "--dsn", help="postgresql://user:pass@host:5432/db"),
+    dsn: str = typer.Option(
+        ...,
+        "--dsn",
+        help="DSN de SQLAlchemy: postgresql://user:pass@host/db  |  mysql+pymysql://...",
+    ),
 ) -> None:
-    """Configurar conexión a PostgreSQL y guardar credenciales cifradas."""
+    """Configurar conexión a una base de datos remota y guardar credenciales cifradas."""
     _require_sync_deps()
     try:
-        from tasks_cli.db.postgres import PostgreSQLRepository
-        repo = PostgreSQLRepository(dsn)
+        from tasks_cli.db.sqlalchemy_repo import SQLAlchemyRepository
+
+        repo = SQLAlchemyRepository(dsn)
         repo.close()
     except Exception as exc:
         error(f"No se pudo conectar: {exc}")
         raise typer.Exit(1)
 
     cfg = get_config()
-    cfg.pg_dsn = _encrypt_dsn(dsn)
+    cfg.remote_dsn = _encrypt_dsn(dsn)
     save_config(cfg)
     success("Conexión configurada y credenciales cifradas.")
 
 
 @app.command()
 def push() -> None:
-    """Enviar cambios locales pendientes al servidor PostgreSQL."""
+    """Enviar cambios locales pendientes al servidor remoto."""
     _require_sync_deps()
     cfg = get_config()
-    if not cfg.pg_dsn:
+    if not cfg.remote_dsn:
         error("Sync no configurado. Ejecuta: tasks sync setup --dsn <DSN>")
         raise typer.Exit(1)
 
-    from tasks_cli.db.postgres import PostgreSQLRepository
-    from tasks_cli.db.sqlite import SQLiteRepository
-    from tasks_cli.sync.engine import SyncEngine
-
-    local = SQLiteRepository(cfg.db_path)
-    remote = PostgreSQLRepository(_decrypt_dsn(cfg.pg_dsn))
-    engine = SyncEngine(local, remote)
-
+    engine, local, remote = _build_engine(cfg)
     with console.status("Enviando cambios..."):
         result = engine.push()
-
     local.close()
     remote.close()
 
@@ -104,21 +111,13 @@ def pull() -> None:
     """Descargar cambios del servidor y aplicarlos localmente."""
     _require_sync_deps()
     cfg = get_config()
-    if not cfg.pg_dsn:
+    if not cfg.remote_dsn:
         error("Sync no configurado. Ejecuta: tasks sync setup --dsn <DSN>")
         raise typer.Exit(1)
 
-    from tasks_cli.db.postgres import PostgreSQLRepository
-    from tasks_cli.db.sqlite import SQLiteRepository
-    from tasks_cli.sync.engine import SyncEngine
-
-    local = SQLiteRepository(cfg.db_path)
-    remote = PostgreSQLRepository(_decrypt_dsn(cfg.pg_dsn))
-    engine = SyncEngine(local, remote)
-
+    engine, local, remote = _build_engine(cfg)
     with console.status("Descargando cambios..."):
         result = engine.pull()
-
     local.close()
     remote.close()
 
@@ -133,17 +132,11 @@ def sync_status() -> None:
     """Mostrar cambios pendientes y estado del último sync."""
     _require_sync_deps()
     cfg = get_config()
-    if not cfg.pg_dsn:
+    if not cfg.remote_dsn:
         info("Sync no configurado.")
         return
 
-    from tasks_cli.db.postgres import PostgreSQLRepository
-    from tasks_cli.db.sqlite import SQLiteRepository
-    from tasks_cli.sync.engine import SyncEngine
-
-    local = SQLiteRepository(cfg.db_path)
-    remote = PostgreSQLRepository(_decrypt_dsn(cfg.pg_dsn))
-    engine = SyncEngine(local, remote)
+    engine, local, remote = _build_engine(cfg)
     st = engine.status()
     local.close()
     remote.close()
@@ -159,11 +152,24 @@ def auto(
     """Activar sync automático en background cada N minutos."""
     _require_sync_deps()
     import time
+
+    cfg = get_config()
+    if not cfg.remote_dsn:
+        error("Sync no configurado. Ejecuta: tasks sync setup --dsn <DSN>")
+        raise typer.Exit(1)
+
     success(f"Sync automático activo cada {interval} minuto(s). Ctrl+C para detener.")
     try:
         while True:
-            push.callback()  # type: ignore[misc]
-            pull.callback()  # type: ignore[misc]
+            engine, local, remote = _build_engine(cfg)
+            try:
+                engine.push()
+                engine.pull()
+            except Exception as exc:
+                error(f"Error durante sync: {exc}")
+            finally:
+                local.close()
+                remote.close()
             time.sleep(interval * 60)
     except KeyboardInterrupt:
         info("Sync automático detenido.")

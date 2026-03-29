@@ -101,7 +101,7 @@ class Task(BaseModel):
 class Config(BaseModel):
     device_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     db_path: Path = Path.home() / ".tasks" / "tasks.db"
-    pg_dsn: str | None = None  # cifrado en disco
+    remote_dsn: str | None = None  # cifrado en disco — cualquier DSN SQLAlchemy
     sync_interval: int = 5
     default_priority: Priority = Priority.medium
     date_format: str = "DD/MM/YYYY"

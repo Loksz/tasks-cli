@@ -408,14 +408,31 @@ def import_tasks(
     imported = 0
     skipped = 0
 
-    with open(file, encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with open(file, encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError) as exc:
+        error(f"No se pudo leer el archivo: {exc}")
+        repo.close()
+        raise typer.Exit(1)
+
+    if not isinstance(data, list):
+        error("El archivo JSON debe contener una lista de tareas.")
+        repo.close()
+        raise typer.Exit(1)
 
     for item in data:
+        if not isinstance(item, dict):
+            skipped += 1
+            continue
         if repo.get(item.get("id", "")):
             skipped += 1
             continue
-        task = Task.model_validate(item)
+        try:
+            task = Task.model_validate(item)
+        except Exception:
+            skipped += 1
+            continue
         repo.save(task)
         imported += 1
 

@@ -17,9 +17,19 @@ dependencies = [
 [project.optional-dependencies]
 sync = [
     "sqlalchemy>=2.0",
-    "alembic>=1.13",
-    "psycopg2-binary>=2.9",
     "cryptography>=42",
+]
+sync-postgres = [
+    "tasks-cli[sync]",
+    "psycopg2-binary>=2.9",
+]
+sync-mysql = [
+    "tasks-cli[sync]",
+    "pymysql>=1.1",
+]
+sync-mariadb = [
+    "tasks-cli[sync]",
+    "pymysql>=1.1",
 ]
 dev = [
     "pytest",

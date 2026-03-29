@@ -1,4 +1,4 @@
-"""SyncEngine — coordina push/pull entre SQLite y PostgreSQL."""
+"""SyncEngine — coordina push/pull entre el repositorio local y el remoto."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ class SyncEngine:
         self._resolver = resolver or ConflictResolver()
 
     def push(self) -> SyncResult:
-        """Envía tareas pendientes desde SQLite hacia PostgreSQL."""
+        """Envía tareas pendientes desde el local hacia el remoto."""
         result = SyncResult()
         pending = self._local.get_pending_sync()
 
@@ -51,6 +51,7 @@ class SyncEngine:
                     winner.sync_status = SyncStatus.synced
                     winner.sync_version += 1
                     self._remote.save(winner)
+                    self._local.save(winner)  # aplica el ganador también en local
                     result.conflicts += 1
                 else:
                     task.sync_status = SyncStatus.synced
@@ -66,9 +67,10 @@ class SyncEngine:
         return result
 
     def pull(self, since: datetime | None = None) -> SyncResult:
-        """Descarga cambios del servidor y los aplica en SQLite."""
+        """Descarga cambios del remoto y los aplica en el local."""
         result = SyncResult()
         remote_tasks = self._remote.list()
+        pulled_ids: list[str] = []
 
         for remote_task in remote_tasks:
             if since and remote_task.updated_at < since:
@@ -77,15 +79,20 @@ class SyncEngine:
                 local_task = self._local.get(remote_task.id)
                 if local_task and self._resolver.is_conflict(local_task, remote_task):
                     winner = self._resolver.resolve(local_task, remote_task)
+                    winner.sync_status = SyncStatus.synced
+                    winner.sync_version += 1
                     self._local.save(winner)
                     result.conflicts += 1
                 else:
                     remote_task.sync_status = SyncStatus.synced
                     self._local.save(remote_task)
                     result.pulled += 1
+
+                pulled_ids.append(remote_task.id)
             except Exception as exc:
                 result.errors.append(f"{remote_task.id}: {exc}")
 
+        self._local.mark_synced(pulled_ids)
         return result
 
     def status(self) -> dict:

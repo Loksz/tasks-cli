@@ -38,8 +38,8 @@ def save_config(config: Config) -> None:
         f'date_format = "{config.date_format}"\n',
         f'no_color = {str(config.no_color).lower()}\n',
     ]
-    if config.pg_dsn:
-        lines.append(f'pg_dsn = "{config.pg_dsn}"\n')
+    if config.remote_dsn:
+        lines.append(f'remote_dsn = "{config.remote_dsn}"\n')
 
     _CONFIG_FILE.write_text("".join(lines), encoding="utf-8")
 
