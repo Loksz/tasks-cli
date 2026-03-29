@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from sqlalchemy import JSON, Column, Date, DateTime, Index, Integer, String, Text, create_engine, func, text
+from sqlalchemy import JSON, Column, Date, DateTime, Index, Integer, String, Text, create_engine, func
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session
 

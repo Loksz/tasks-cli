@@ -50,9 +50,9 @@ def _key_path():
     return Path.home() / ".tasks" / ".sync.key"
 
 
-def _build_engine(cfg) -> "SyncEngine":  # type: ignore[name-defined]
-    from tasks_cli.db.sqlite import SQLiteRepository
+def _build_engine(cfg):
     from tasks_cli.db.sqlalchemy_repo import SQLAlchemyRepository
+    from tasks_cli.db.sqlite import SQLiteRepository
     from tasks_cli.sync.engine import SyncEngine
 
     local = SQLiteRepository(cfg.db_path)

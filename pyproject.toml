@@ -40,7 +40,7 @@ dev = [
 ]
 
 [project.scripts]
-tasks = "tasks_cli.__main__:main"
+task = "tasks_cli.__main__:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["tasks_cli"]
