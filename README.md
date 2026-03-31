@@ -92,4 +92,4 @@ Los conflictos se resuelven automáticamente: gana siempre la versión más reci
 
 ## Stack
 
-Python 3.11 · Typer · Rich · Textual · Pydantic v2 · SQLite · SQLAlchemy
+Python 3.11 | Typer | Rich | Textual | Pydantic v2 | SQLite | SQLAlchemy
