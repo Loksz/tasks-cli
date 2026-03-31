@@ -8,11 +8,22 @@ from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, ScrollableContainer, Vertical
+from textual.message import Message
 from textual.screen import Screen
 from textual.validation import ValidationResult, Validator
-from textual.message import Message
 from textual.widget import Widget
-from textual.widgets import Button, DataTable, Footer, Header, Input, Label, RadioButton, RadioSet, SelectionList, Static
+from textual.widgets import (
+    Button,
+    DataTable,
+    Footer,
+    Header,
+    Input,
+    Label,
+    RadioButton,
+    RadioSet,
+    SelectionList,
+    Static,
+)
 from textual.widgets.selection_list import Selection
 
 from tasks_cli.config import get_config
