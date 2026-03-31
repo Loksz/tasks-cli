@@ -10,6 +10,27 @@ cd task-cli
 pip install -e .
 ```
 
+## Interfaz interactiva (TUI)
+
+Si prefieres una interfaz visual navegable con el teclado, instala las dependencias opcionales y abre la UI:
+
+```bash
+pip install -e '.[ui]'
+task ui
+```
+
+La interfaz muestra la lista de tareas a la izquierda y el detalle o formulario a la derecha. Se adapta al tamaño de la terminal.
+
+| Tecla | Acción |
+|-------|--------|
+| `a`   | Agregar tarea |
+| `e`   | Editar tarea seleccionada |
+| `d`   | Marcar como completada |
+| `x`   | Eliminar tarea |
+| `q`   | Salir |
+
+El formulario permite crear y asignar etiquetas directamente. Las etiquetas se guardan de forma persistente y aparecen como lista seleccionable al crear o editar cualquier tarea.
+
 ## Uso básico
 
 ```bash
@@ -71,4 +92,4 @@ Los conflictos se resuelven automáticamente: gana siempre la versión más reci
 
 ## Stack
 
-Python 3.11 · Typer · Rich · Pydantic v2 · SQLite · SQLAlchemy
+Python 3.11 · Typer · Rich · Textual · Pydantic v2 · SQLite · SQLAlchemy

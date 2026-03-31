@@ -6,11 +6,7 @@ import typer
 
 from tasks_cli.cli.utils import console, error, info, success
 from tasks_cli.config import get_config, save_config
-
-_SYNC_DEPS_MSG = (
-    "Las dependencias de sincronización no están instaladas.\n"
-    r"Instálalas con:  pip install 'tasks-cli[sync]'"
-)
+from tasks_cli.i18n import t
 
 
 def _require_sync_deps() -> None:
@@ -18,11 +14,11 @@ def _require_sync_deps() -> None:
         import cryptography  # noqa: F401
         import sqlalchemy  # noqa: F401
     except ImportError:
-        error(_SYNC_DEPS_MSG)
+        error(t("msg.sync_deps_missing"))
         raise typer.Exit(1)
 
 
-app = typer.Typer(help="Sincronización entre dispositivos")
+app = typer.Typer(help=t("help.sync_app"))
 
 
 def _encrypt_dsn(dsn: str) -> str:
@@ -60,7 +56,7 @@ def _build_engine(cfg):
     return SyncEngine(local, remote), local, remote
 
 
-@app.command()
+@app.command(help=t("help.sync_setup"))
 def setup(
     dsn: str = typer.Option(
         ...,
@@ -68,7 +64,6 @@ def setup(
         help="DSN de SQLAlchemy: postgresql://user:pass@host/db  |  mysql+pymysql://...",
     ),
 ) -> None:
-    """Configurar conexión a una base de datos remota y guardar credenciales cifradas."""
     _require_sync_deps()
     try:
         from tasks_cli.db.sqlalchemy_repo import SQLAlchemyRepository
@@ -76,26 +71,25 @@ def setup(
         repo = SQLAlchemyRepository(dsn)
         repo.close()
     except Exception as exc:
-        error(f"No se pudo conectar: {exc}")
+        error(t("msg.sync_connect_failed", exc=exc))
         raise typer.Exit(1)
 
     cfg = get_config()
     cfg.remote_dsn = _encrypt_dsn(dsn)
     save_config(cfg)
-    success("Conexión configurada y credenciales cifradas.")
+    success(t("msg.sync_connected"))
 
 
-@app.command()
+@app.command(help=t("help.sync_push"))
 def push() -> None:
-    """Enviar cambios locales pendientes al servidor remoto."""
     _require_sync_deps()
     cfg = get_config()
     if not cfg.remote_dsn:
-        error("Sync no configurado. Ejecuta: tasks sync setup --dsn <DSN>")
+        error(t("msg.sync_not_configured"))
         raise typer.Exit(1)
 
     engine, local, remote = _build_engine(cfg)
-    with console.status("Enviando cambios..."):
+    with console.status(t("msg.pushing")):
         result = engine.push()
     local.close()
     remote.close()
@@ -103,20 +97,19 @@ def push() -> None:
     if result.errors:
         for e in result.errors:
             error(e)
-    success(f"Push completado — enviadas: {result.pushed}  conflictos: {result.conflicts}")
+    success(t("msg.push_done", pushed=result.pushed, conflicts=result.conflicts))
 
 
-@app.command()
+@app.command(help=t("help.sync_pull"))
 def pull() -> None:
-    """Descargar cambios del servidor y aplicarlos localmente."""
     _require_sync_deps()
     cfg = get_config()
     if not cfg.remote_dsn:
-        error("Sync no configurado. Ejecuta: tasks sync setup --dsn <DSN>")
+        error(t("msg.sync_not_configured"))
         raise typer.Exit(1)
 
     engine, local, remote = _build_engine(cfg)
-    with console.status("Descargando cambios..."):
+    with console.status(t("msg.pulling")):
         result = engine.pull()
     local.close()
     remote.close()
@@ -124,16 +117,15 @@ def pull() -> None:
     if result.errors:
         for e in result.errors:
             error(e)
-    success(f"Pull completado — aplicadas: {result.pulled}  conflictos: {result.conflicts}")
+    success(t("msg.pull_done", pulled=result.pulled, conflicts=result.conflicts))
 
 
-@app.command(name="status")
+@app.command(name="status", help=t("help.sync_status"))
 def sync_status() -> None:
-    """Mostrar cambios pendientes y estado del último sync."""
     _require_sync_deps()
     cfg = get_config()
     if not cfg.remote_dsn:
-        info("Sync no configurado.")
+        info(t("msg.sync_not_configured_short"))
         return
 
     engine, local, remote = _build_engine(cfg)
@@ -141,24 +133,23 @@ def sync_status() -> None:
     local.close()
     remote.close()
 
-    console.print(f"Cambios pendientes: [bold]{st['pending_count']}[/bold]")
-    console.print(f"Comprobado: [dim]{st['checked_at']}[/dim]")
+    console.print(t("msg.sync_pending", count=f"[bold]{st['pending_count']}[/bold]"))
+    console.print(t("msg.sync_checked_at", time=f"[dim]{st['checked_at']}[/dim]"))
 
 
-@app.command()
+@app.command(help=t("help.sync_auto"))
 def auto(
     interval: int = typer.Option(5, "--interval", "-i", help="Minutos entre sync"),
 ) -> None:
-    """Activar sync automático en background cada N minutos."""
     _require_sync_deps()
     import time
 
     cfg = get_config()
     if not cfg.remote_dsn:
-        error("Sync no configurado. Ejecuta: tasks sync setup --dsn <DSN>")
+        error(t("msg.sync_not_configured"))
         raise typer.Exit(1)
 
-    success(f"Sync automático activo cada {interval} minuto(s). Ctrl+C para detener.")
+    success(t("msg.sync_auto_start", interval=interval))
     try:
         while True:
             engine, local, remote = _build_engine(cfg)
@@ -166,10 +157,10 @@ def auto(
                 engine.push()
                 engine.pull()
             except Exception as exc:
-                error(f"Error durante sync: {exc}")
+                error(t("msg.sync_auto_error", exc=exc))
             finally:
                 local.close()
                 remote.close()
             time.sleep(interval * 60)
     except KeyboardInterrupt:
-        info("Sync automático detenido.")
+        info(t("msg.sync_auto_stopped"))

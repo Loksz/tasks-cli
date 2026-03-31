@@ -9,36 +9,51 @@ import tasks_cli.cli.tasks as tasks_commands
 from tasks_cli.cli.completions import complete_config_key
 from tasks_cli.cli.utils import console
 from tasks_cli.config import get_config, set_value
+from tasks_cli.i18n import t
 
 app = typer.Typer(
     name="tasks",
-    help="TASKS — CLI de Gestión de Tareas con Sincronización",
+    help=t("help.app"),
     no_args_is_help=True,
 )
 
 # Registrar subgrupos
 app.add_typer(tasks_commands.app, name=None)   # comandos al nivel raíz
-app.add_typer(sync_commands.app, name="sync")  # tasks sync <subcomando>
+app.add_typer(sync_commands.app, name="sync")  # task sync <subcomando>
+
+
+# ---------------------------------------------------------------------------
+# TUI
+# ---------------------------------------------------------------------------
+
+
+@app.command(help=t("help.ui"))
+def ui() -> None:
+    try:
+        from tasks_cli.tui.app import TaskApp
+    except ImportError:
+        typer.echo(t("msg.install_ui"), err=True)
+        raise typer.Exit(1)
+    TaskApp().run()
 
 
 # ---------------------------------------------------------------------------
 # Configuración
 # ---------------------------------------------------------------------------
 
-config_app = typer.Typer(help="Ver y modificar la configuración del usuario")
+config_app = typer.Typer(help=t("help.config_app"))
 app.add_typer(config_app, name="config")
 
 
-@config_app.command(name="get")
+@config_app.command(name="get", help=t("help.config_get"))
 def config_get(
-    key: str = typer.Argument(None, help="Nombre del campo a consultar (omitir para ver todos)", autocompletion=complete_config_key),
+    key: str = typer.Argument(None, help="Campo a consultar (omitir para ver todos)", autocompletion=complete_config_key),
 ) -> None:
-    """Ver valor(es) de configuración."""
     cfg = get_config()
     data = cfg.model_dump()
     if key:
         if key not in data:
-            typer.echo(f"Campo desconocido: {key}", err=True)
+            typer.echo(t("msg.config_unknown_key", key=key), err=True)
             raise typer.Exit(1)
         console.print(f"{key} = {data[key]}")
     else:
@@ -46,12 +61,15 @@ def config_get(
             console.print(f"{k} = [dim]{v}[/dim]")
 
 
-@config_app.command(name="set")
+@config_app.command(name="set", help=t("help.config_set"))
 def config_set(
-    key: str = typer.Argument(..., help="Nombre del campo a modificar", autocompletion=complete_config_key),
+    key: str = typer.Argument(..., help="Campo a modificar", autocompletion=complete_config_key),
     value: str = typer.Argument(..., help="Nuevo valor"),
 ) -> None:
-    """Establecer un valor de configuración persistente."""
+    cfg = get_config()
+    if key not in cfg.model_fields:
+        typer.echo(t("msg.config_unknown_key", key=key), err=True)
+        raise typer.Exit(1)
     try:
         set_value(key, value)
         console.print(f"[green]✓[/green] {key} = {value}")

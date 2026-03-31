@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
+from tasks_cli.i18n import t
 from tasks_cli.models.task import Priority, Task, TaskStatus
 
 console = Console()
@@ -40,9 +41,9 @@ def fmt_due(due_date: date | None) -> Text:
     if delta < 0:
         return Text(due_date.strftime("%d/%m"), style="red bold")
     if delta == 0:
-        return Text("hoy", style="yellow bold")
+        return Text(t("fmt.today"), style="yellow bold")
     if delta == 1:
-        return Text("mañana", style="yellow")
+        return Text(t("fmt.tomorrow"), style="yellow")
     return Text(due_date.strftime("%d/%m"), style="default")
 
 
@@ -60,11 +61,11 @@ def fmt_title(task: Task) -> Text:
 def tasks_table(tasks: list[Task]) -> Table:
     table = Table(show_header=True, header_style="bold cyan", box=None, pad_edge=False)
     table.add_column("ID", style="dim", width=9, no_wrap=True)
-    table.add_column("Título", min_width=20, max_width=42)
-    table.add_column("Proyecto", style="cyan", min_width=8)
+    table.add_column(t("col.title"), min_width=20, max_width=42)
+    table.add_column(t("col.project"), style="cyan", min_width=8)
     table.add_column("P", width=3, justify="center")
-    table.add_column("Vence", width=7, justify="right")
-    table.add_column("Estado", width=7, justify="center")
+    table.add_column(t("col.due"), width=7, justify="right")
+    table.add_column(t("col.status"), width=7, justify="center")
 
     for task in tasks:
         table.add_row(

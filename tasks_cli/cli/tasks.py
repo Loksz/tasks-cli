@@ -27,9 +27,10 @@ from tasks_cli.cli.utils import (
 from tasks_cli.config import get_config
 from tasks_cli.db.base import TaskFilters
 from tasks_cli.db.sqlite import SQLiteRepository
+from tasks_cli.i18n import t
 from tasks_cli.models.task import ExportFormat, Priority, Task, TaskStatus
 
-app = typer.Typer(help="Gestión de tareas")
+app = typer.Typer(help=t("help.tasks_app"))
 
 
 def _repo() -> SQLiteRepository:
@@ -42,7 +43,7 @@ def _repo() -> SQLiteRepository:
 # ---------------------------------------------------------------------------
 
 
-@app.command()
+@app.command(help=t("help.add"))
 def add(
     title: str = typer.Argument(..., help="Título de la nueva tarea"),
     priority: Priority = typer.Option(None, "--priority", "-p", help="Prioridad: low | medium | high"),
@@ -52,7 +53,6 @@ def add(
     notes: str | None = typer.Option(None, "--notes", "-n", help="Notas adicionales"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Imprime solo el ID generado (útil en scripts)"),
 ) -> None:
-    """Crear una nueva tarea."""
     cfg = get_config()
     due_date = date.fromisoformat(due) if due else None
     task = Task(
@@ -73,10 +73,10 @@ def add(
     if quiet:
         typer.echo(task.id)
     else:
-        success(f"Tarea creada [{task.short_id}] — {task.title}")
+        success(t("msg.task_created", id=task.short_id, title=task.title))
 
 
-@app.command(name="list")
+@app.command(name="list", help=t("help.list"))
 def list_tasks(
     status: TaskStatus | None = typer.Option(None, "--status", "-s", help="Filtrar por estado: pending | in_progress | done | cancelled"),
     priority: Priority | None = typer.Option(None, "--priority", "-p", help="Filtrar por prioridad: low | medium | high"),
@@ -86,7 +86,6 @@ def list_tasks(
     due_after: str | None = typer.Option(None, "--due-after", help="Vence después de (YYYY-MM-DD)"),
     fmt: str | None = typer.Option(None, "--format", "-f", help="Formato de salida: table | json | ids"),
 ) -> None:
-    """Listar tareas con filtros opcionales."""
     filters = TaskFilters(
         status=status,
         priority=priority,
@@ -100,38 +99,37 @@ def list_tasks(
     repo.close()
 
     if fmt == "json":
-        typer.echo(json.dumps([t.model_dump(mode="json") for t in tasks], indent=2, default=str))
+        typer.echo(json.dumps([t_.model_dump(mode="json") for t_ in tasks], indent=2, default=str))
         return
     if fmt == "ids":
-        for t in tasks:
-            typer.echo(t.id)
+        for t_ in tasks:
+            typer.echo(t_.id)
         return
 
     if not tasks:
-        typer.echo("No hay tareas.")
+        typer.echo(t("msg.no_tasks"))
         return
     console.print(tasks_table(tasks))
 
 
-@app.command()
+@app.command(help=t("help.done"))
 def done(
     ids: list[str] = typer.Argument(..., help="ID(s) de tareas a completar", autocompletion=complete_pending_id),
 ) -> None:
-    """Marcar una o varias tareas como completadas."""
     repo = _repo()
     for task_id in ids:
         task = repo.get(task_id) or _find_by_short_id(repo, task_id)
         if not task:
-            error(f"Tarea no encontrada: {task_id}")
+            error(t("msg.task_not_found", id=task_id))
             continue
         task.mark_done()
         repo.save(task)
-        success(f"[{task.short_id}] {task.title} — completada")
+        success(t("msg.task_done", id=task.short_id, title=task.title))
     cache.update(repo)
     repo.close()
 
 
-@app.command()
+@app.command(help=t("help.edit"))
 def edit(
     task_id: str = typer.Argument(..., help="ID de la tarea a editar", autocompletion=complete_task_id),
     title: str | None = typer.Option(None, "--title", help="Nuevo título"),
@@ -142,11 +140,10 @@ def edit(
     notes: str | None = typer.Option(None, "--notes", "-n", help="Nuevas notas"),
     status: TaskStatus | None = typer.Option(None, "--status", "-s", help="Nuevo estado: pending | in_progress | done | cancelled"),
 ) -> None:
-    """Modificar campos de una tarea existente."""
     repo = _repo()
     task = repo.get(task_id) or _find_by_short_id(repo, task_id)
     if not task:
-        error(f"Tarea no encontrada: {task_id}")
+        error(t("msg.task_not_found", id=task_id))
         repo.close()
         raise typer.Exit(1)
 
@@ -169,72 +166,69 @@ def edit(
     repo.save(task)
     cache.update(repo)
     repo.close()
-    success(f"Tarea [{task.short_id}] actualizada")
+    success(t("msg.task_updated", id=task.short_id))
 
 
-@app.command()
+@app.command(help=t("help.delete"))
 def delete(
     task_id: str = typer.Argument(..., help="ID de la tarea a eliminar", autocompletion=complete_task_id),
     force: bool = typer.Option(False, "--force", "-f", help="Omitir confirmación interactiva"),
 ) -> None:
-    """Eliminar una tarea de forma permanente."""
     repo = _repo()
     task = repo.get(task_id) or _find_by_short_id(repo, task_id)
     if not task:
-        error(f"Tarea no encontrada: {task_id}")
+        error(t("msg.task_not_found", id=task_id))
         repo.close()
         raise typer.Exit(1)
 
     if not force:
-        typer.confirm(f"¿Eliminar '{task.title}'?", abort=True)
+        typer.confirm(t("msg.delete_confirm", title=task.title), abort=True)
 
     repo.delete(task.id)
     cache.update(repo)
     repo.close()
-    success(f"Tarea [{task.short_id}] eliminada")
+    success(t("msg.task_deleted", id=task.short_id))
 
 
-@app.command()
+@app.command(help=t("help.show"))
 def show(
     task_id: str = typer.Argument(..., help="ID de la tarea", autocompletion=complete_task_id),
 ) -> None:
-    """Ver detalle completo de una tarea."""
     repo = _repo()
     task = repo.get(task_id) or _find_by_short_id(repo, task_id)
     repo.close()
 
     if not task:
-        error(f"Tarea no encontrada: {task_id}")
+        error(t("msg.task_not_found", id=task_id))
         raise typer.Exit(1)
 
     lines = [
         f"[bold]{task.title}[/bold]",
         f"ID: [dim]{task.id}[/dim]",
-        f"Estado: {fmt_status(task.status)} {task.status.value}",
-        f"Prioridad: {fmt_priority(task.priority)} {task.priority.value}",
-        f"Proyecto: {task.project or '—'}",
-        f"Etiquetas: {', '.join(task.tags) or '—'}",
-        f"Vence: {fmt_due(task.due_date)}",
-        f"Creada: {task.created_at.strftime('%d/%m/%Y %H:%M')} UTC",
-        f"Modificada: {task.updated_at.strftime('%d/%m/%Y %H:%M')} UTC",
+        f"{t('show.status')}: {fmt_status(task.status)} {task.status.value}",
+        f"{t('show.priority')}: {fmt_priority(task.priority)} {task.priority.value}",
+        f"{t('show.project')}: {task.project or '—'}",
+        f"{t('show.tags')}: {', '.join(task.tags) or '—'}",
+        f"{t('show.due')}: {fmt_due(task.due_date)}",
+        f"{t('show.created')}: {task.created_at.strftime('%d/%m/%Y %H:%M')} UTC",
+        f"{t('show.modified')}: {task.updated_at.strftime('%d/%m/%Y %H:%M')} UTC",
     ]
     if task.notes:
-        lines.append(f"\n[dim]Notas:[/dim] {task.notes}")
+        lines.append(f"\n[dim]{t('show.notes')}:[/dim] {task.notes}")
 
-    console.print(Panel("\n".join(lines), title="Detalle de tarea"))
+    console.print(Panel("\n".join(lines), title=t("show.panel_title")))
 
 
-@app.command()
+@app.command(help=t("help.search"))
 def search(
     query: str = typer.Argument(..., help="Texto a buscar en título y notas"),
 ) -> None:
-    """Búsqueda de texto en títulos y notas."""
     repo = _repo()
     results = repo.search(query)
     repo.close()
 
     if not results:
-        typer.echo("Sin resultados.")
+        typer.echo(t("msg.no_results"))
         return
     console.print(tasks_table(results))
 
@@ -244,43 +238,40 @@ def search(
 # ---------------------------------------------------------------------------
 
 
-@app.command()
+@app.command(help=t("help.today"))
 def today() -> None:
-    """Tareas con vencimiento hoy o vencidas sin completar."""
     repo = _repo()
     all_tasks = repo.list(TaskFilters(status=TaskStatus.pending))
     repo.close()
 
     today_date = date.today()
-    relevant = [t for t in all_tasks if t.due_date and t.due_date <= today_date]
+    relevant = [t_ for t_ in all_tasks if t_.due_date and t_.due_date <= today_date]
     if not relevant:
-        typer.echo("Sin tareas para hoy.")
+        typer.echo(t("msg.no_today"))
         return
     console.print(tasks_table(relevant))
 
 
-@app.command()
+@app.command(help=t("help.overdue"))
 def overdue() -> None:
-    """Listar todas las tareas vencidas."""
     repo = _repo()
     all_tasks = repo.list(TaskFilters(status=TaskStatus.pending))
     repo.close()
 
     overdue_tasks = sorted(
-        [t for t in all_tasks if t.is_overdue],
-        key=lambda t: t.due_date or date.today(),
+        [t_ for t_ in all_tasks if t_.is_overdue],
+        key=lambda t_: t_.due_date or date.today(),
     )
     if not overdue_tasks:
-        typer.echo("Sin tareas vencidas.")
+        typer.echo(t("msg.no_overdue"))
         return
     console.print(tasks_table(overdue_tasks))
 
 
-@app.command()
+@app.command(help=t("help.upcoming"))
 def upcoming(
     days: int = typer.Option(7, "--days", "-d", help="Número de días hacia adelante (default: 7)"),
 ) -> None:
-    """Tareas con vencimiento en los próximos N días."""
     today_date = date.today()
     limit = today_date + timedelta(days=days)
 
@@ -295,64 +286,67 @@ def upcoming(
     repo.close()
 
     if not tasks:
-        typer.echo(f"Sin tareas en los próximos {days} días.")
+        typer.echo(t("msg.no_upcoming", days=days))
         return
     console.print(tasks_table(tasks))
 
 
-@app.command()
+@app.command(help=t("help.projects"))
 def projects() -> None:
-    """Listar proyectos activos con conteo de tareas."""
     repo = _repo()
     all_tasks = repo.list()
     repo.close()
 
     from collections import defaultdict
+
     counts: dict[str, dict[str, int]] = defaultdict(lambda: {"pending": 0, "done": 0})
-    for t in all_tasks:
-        key = t.project or "(sin proyecto)"
-        if t.status == TaskStatus.done:
+    for t_ in all_tasks:
+        key = t_.project or t("lbl.no_project")
+        if t_.status == TaskStatus.done:
             counts[key]["done"] += 1
         else:
             counts[key]["pending"] += 1
 
     for proj, c in sorted(counts.items()):
-        console.print(f"[cyan]{proj}[/cyan]  pendientes: {c['pending']}  completadas: {c['done']}")
+        console.print(f"[cyan]{proj}[/cyan]  {t('lbl.pending')}: {c['pending']}  {t('lbl.done')}: {c['done']}")
 
 
-@app.command()
+@app.command(help=t("help.tags"))
 def tags() -> None:
-    """Listar etiquetas con conteo de tareas."""
     repo = _repo()
     all_tasks = repo.list()
     repo.close()
 
     from collections import Counter
+
     counter: Counter[str] = Counter()
-    for t in all_tasks:
-        for tag in t.tags:
+    for t_ in all_tasks:
+        for tag in t_.tags:
             counter[tag] += 1
 
     for tag, count in counter.most_common():
-        console.print(f"[yellow]{tag}[/yellow]  {count} tarea(s)")
+        console.print(f"[yellow]{tag}[/yellow]  {count} {t('lbl.task_count')}")
 
 
-@app.command()
+@app.command(help=t("help.stats"))
 def stats() -> None:
-    """Resumen estadístico de tareas."""
     repo = _repo()
     all_tasks = repo.list()
     repo.close()
 
     total = len(all_tasks)
-    done = sum(1 for t in all_tasks if t.status == TaskStatus.done)
-    pending = sum(1 for t in all_tasks if t.status == TaskStatus.pending)
-    overdue_count = sum(1 for t in all_tasks if t.is_overdue)
-    rate = (done / total * 100) if total else 0
+    done_count = sum(1 for t_ in all_tasks if t_.status == TaskStatus.done)
+    pending_count = sum(1 for t_ in all_tasks if t_.status == TaskStatus.pending)
+    overdue_count = sum(1 for t_ in all_tasks if t_.is_overdue)
+    rate = (done_count / total * 100) if total else 0
 
-    console.print(f"Total: [bold]{total}[/bold]  Completadas: [green]{done}[/green]  "
-                  f"Pendientes: [yellow]{pending}[/yellow]  Vencidas: [red]{overdue_count}[/red]  "
-                  f"Tasa: [bold]{rate:.1f}%[/bold]")
+    console.print(
+        f"{t('lbl.total')}: [bold]{total}[/bold]  "
+        f"{t('lbl.completed')}: [green]{done_count}[/green]  "
+        f"{t('lbl.pending')}: [yellow]{pending_count}[/yellow]  "
+        f"{t('lbl.overdue')}: [red]{overdue_count}[/red]  "
+        f"{t('lbl.rate')}: [bold]{rate:.1f}%[/bold]"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -360,50 +354,49 @@ def stats() -> None:
 # ---------------------------------------------------------------------------
 
 
-@app.command(name="export")
+@app.command(name="export", help=t("help.export"))
 def export_tasks(
     fmt: ExportFormat = typer.Option(ExportFormat.json, "--format", "-f", help="Formato de salida: json | csv | markdown"),
     output: str | None = typer.Option(None, "--output", "-o", help="Ruta del archivo de destino"),
     status_filter: TaskStatus | None = typer.Option(None, "--filter", help="Exportar solo tareas con este estado"),
 ) -> None:
-    """Exportar tareas a JSON, CSV o Markdown."""
     repo = _repo()
     tasks = repo.list(TaskFilters(status=status_filter) if status_filter else None)
     repo.close()
 
     if fmt == ExportFormat.json:
-        content = json.dumps([t.model_dump(mode="json") for t in tasks], indent=2, default=str)
+        content = json.dumps([t_.model_dump(mode="json") for t_ in tasks], indent=2, default=str)
         ext = "json"
     elif fmt == ExportFormat.csv:
         import csv
         import io
+
         buf = io.StringIO()
         writer = csv.writer(buf)
         writer.writerow(["id", "title", "status", "priority", "project", "due_date", "tags"])
-        for t in tasks:
-            writer.writerow([t.id, t.title, t.status.value, t.priority.value,
-                             t.project or "", t.due_date or "", ",".join(t.tags)])
+        for t_ in tasks:
+            writer.writerow([t_.id, t_.title, t_.status.value, t_.priority.value,
+                             t_.project or "", t_.due_date or "", ",".join(t_.tags)])
         content = buf.getvalue()
         ext = "csv"
     else:
-        lines = ["# Tareas exportadas\n"]
-        for t in tasks:
-            status_char = "x" if t.status == TaskStatus.done else " "
-            lines.append(f"- [{status_char}] **{t.title}** `{t.short_id}`")
+        lines = ["# Tasks export\n"]
+        for t_ in tasks:
+            status_char = "x" if t_.status == TaskStatus.done else " "
+            lines.append(f"- [{status_char}] **{t_.title}** `{t_.short_id}`")
         content = "\n".join(lines)
         ext = "md"
 
     filename = output or f"tasks_export.{ext}"
     with open(filename, "w", encoding="utf-8") as f:
         f.write(content)
-    success(f"Exportado a {filename} ({len(tasks)} tareas)")
+    success(t("msg.exported", file=filename, count=len(tasks)))
 
 
-@app.command(name="import")
+@app.command(name="import", help=t("help.import"))
 def import_tasks(
     file: str = typer.Option(..., "--file", "-f", help="Ruta al archivo JSON o CSV a importar"),
 ) -> None:
-    """Importar tareas desde archivo JSON o CSV."""
     repo = _repo()
     imported = 0
     skipped = 0
@@ -412,12 +405,12 @@ def import_tasks(
         with open(file, encoding="utf-8") as f:
             data = json.load(f)
     except (json.JSONDecodeError, OSError) as exc:
-        error(f"No se pudo leer el archivo: {exc}")
+        error(t("msg.file_read_error", exc=exc))
         repo.close()
         raise typer.Exit(1)
 
     if not isinstance(data, list):
-        error("El archivo JSON debe contener una lista de tareas.")
+        error(t("msg.json_not_list"))
         repo.close()
         raise typer.Exit(1)
 
@@ -439,7 +432,7 @@ def import_tasks(
     if imported:
         cache.update(repo)
     repo.close()
-    success(f"Importadas: {imported}  Duplicados omitidos: {skipped}")
+    success(t("msg.imported", imported=imported, skipped=skipped))
 
 
 # ---------------------------------------------------------------------------

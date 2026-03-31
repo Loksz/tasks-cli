@@ -106,3 +106,4 @@ class Config(BaseModel):
     default_priority: Priority = Priority.medium
     date_format: str = "DD/MM/YYYY"
     no_color: bool = False
+    language: str = "es"

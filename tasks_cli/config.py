@@ -37,6 +37,7 @@ def save_config(config: Config) -> None:
         f'default_priority = "{config.default_priority.value}"\n',
         f'date_format = "{config.date_format}"\n',
         f'no_color = {str(config.no_color).lower()}\n',
+        f'language = "{config.language}"\n',
     ]
     if config.remote_dsn:
         lines.append(f'remote_dsn = "{config.remote_dsn}"\n')
