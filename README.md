@@ -8,7 +8,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://python.org)
 [![Typer](https://img.shields.io/badge/Typer-CLI-009688)](https://typer.tiangolo.com)
 [![Textual](https://img.shields.io/badge/Textual-TUI-7C3AED)](https://textual.textualize.io)
-[![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/features/actions)
+[![CI](https://github.com/Loksz/tasks-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/Loksz/tasks-cli/actions/workflows/ci.yml)
 
 </div>
 
