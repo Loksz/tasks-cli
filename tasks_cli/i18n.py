@@ -1,11 +1,11 @@
-"""Sistema de internacionalización — soporta 'es' (español) y 'en' (inglés)."""
+"""Sistema de internacionalización - soporta 'es' (español) y 'en' (inglés)."""
 
 from __future__ import annotations
 
 _LANGS = {
     "es": {
         # ── CLI: App principal ──────────────────────────────────────────────
-        "help.app": "TASKS — CLI de Gestión de Tareas con Sincronización",
+        "help.app": "TASKS - CLI de Gestión de Tareas con Sincronización",
         "help.ui": "Abrir la interfaz interactiva navegable con flechas del teclado",
         "help.config_app": "Ver y modificar la configuración del usuario",
         "help.config_get": "Ver valor(es) de configuración",
@@ -35,13 +35,13 @@ _LANGS = {
         "help.sync_status": "Mostrar cambios pendientes y estado del último sync",
         "help.sync_auto": "Activar sync automático en background cada N minutos",
         # ── Mensajes CLI ────────────────────────────────────────────────────
-        "msg.task_created": "Tarea creada [{id}] — {title}",
+        "msg.task_created": "Tarea creada \\[{id}] - {title}",
         "msg.no_tasks": "No hay tareas.",
         "msg.task_not_found": "Tarea no encontrada: {id}",
-        "msg.task_done": "[{id}] {title} — completada",
-        "msg.task_updated": "Tarea [{id}] actualizada",
+        "msg.task_done": "\\[{id}] {title} - completada",
+        "msg.task_updated": "Tarea \\[{id}] actualizada",
         "msg.delete_confirm": "¿Eliminar '{title}'?",
-        "msg.task_deleted": "Tarea [{id}] eliminada",
+        "msg.task_deleted": "Tarea \\[{id}] eliminada",
         "msg.no_results": "Sin resultados.",
         "msg.no_today": "Sin tareas para hoy.",
         "msg.no_overdue": "Sin tareas vencidas.",
@@ -61,9 +61,9 @@ _LANGS = {
         "msg.sync_connect_failed": "No se pudo conectar: {exc}",
         "msg.sync_connected": "Conexión configurada y credenciales cifradas.",
         "msg.pushing": "Enviando cambios...",
-        "msg.push_done": "Push completado — enviadas: {pushed}  conflictos: {conflicts}",
+        "msg.push_done": "Push completado - enviadas: {pushed}  conflictos: {conflicts}",
         "msg.pulling": "Descargando cambios...",
-        "msg.pull_done": "Pull completado — aplicadas: {pulled}  conflictos: {conflicts}",
+        "msg.pull_done": "Pull completado - aplicadas: {pulled}  conflictos: {conflicts}",
         "msg.sync_pending": "Cambios pendientes: {count}",
         "msg.sync_checked_at": "Comprobado: {time}",
         "msg.sync_auto_start": "Sync automático activo cada {interval} minuto(s). Ctrl+C para detener.",
@@ -124,9 +124,9 @@ _LANGS = {
         "tui.form.tags_available": "Disponibles:",
         "tui.form.no_tags": "ninguna aún",
         "tui.form.err_title_empty": "El titulo no puede estar vacio",
-        "tui.form.err_date_invalid": "Fecha invalida — usa YYYY-MM-DD",
+        "tui.form.err_date_invalid": "Fecha invalida - usa YYYY-MM-DD",
         "tui.form.err_date_incomplete": "Fecha incompleta",
-        "tui.form.err_date_format": "Formato invalido — usa YYYY-MM-DD",
+        "tui.form.err_date_format": "Formato invalido - usa YYYY-MM-DD",
         # ── TUI: prioridades ────────────────────────────────────────────────
         "tui.priority.low": "Baja",
         "tui.priority.medium": "Media",
@@ -168,7 +168,7 @@ _LANGS = {
     },
     "en": {
         # ── CLI: App principal ──────────────────────────────────────────────
-        "help.app": "TASKS — Task Management CLI with Sync",
+        "help.app": "TASKS - Task Management CLI with Sync",
         "help.ui": "Open the interactive UI, keyboard-navigable with arrow keys",
         "help.config_app": "View and modify user configuration",
         "help.config_get": "View configuration value(s)",
@@ -198,13 +198,13 @@ _LANGS = {
         "help.sync_status": "Show pending changes and last sync status",
         "help.sync_auto": "Run automatic sync in the background every N minutes",
         # ── Mensajes CLI ────────────────────────────────────────────────────
-        "msg.task_created": "Task created [{id}] — {title}",
+        "msg.task_created": "Task created \\[{id}] - {title}",
         "msg.no_tasks": "No tasks.",
         "msg.task_not_found": "Task not found: {id}",
-        "msg.task_done": "[{id}] {title} — done",
-        "msg.task_updated": "Task [{id}] updated",
+        "msg.task_done": "\\[{id}] {title} - done",
+        "msg.task_updated": "Task \\[{id}] updated",
         "msg.delete_confirm": "Delete '{title}'?",
-        "msg.task_deleted": "Task [{id}] deleted",
+        "msg.task_deleted": "Task \\[{id}] deleted",
         "msg.no_results": "No results.",
         "msg.no_today": "No tasks for today.",
         "msg.no_overdue": "No overdue tasks.",
@@ -224,9 +224,9 @@ _LANGS = {
         "msg.sync_connect_failed": "Could not connect: {exc}",
         "msg.sync_connected": "Connection configured and credentials encrypted.",
         "msg.pushing": "Pushing changes...",
-        "msg.push_done": "Push completed — sent: {pushed}  conflicts: {conflicts}",
+        "msg.push_done": "Push completed - sent: {pushed}  conflicts: {conflicts}",
         "msg.pulling": "Pulling changes...",
-        "msg.pull_done": "Pull completed — applied: {pulled}  conflicts: {conflicts}",
+        "msg.pull_done": "Pull completed - applied: {pulled}  conflicts: {conflicts}",
         "msg.sync_pending": "Pending changes: {count}",
         "msg.sync_checked_at": "Last checked: {time}",
         "msg.sync_auto_start": "Auto-sync active every {interval} minute(s). Ctrl+C to stop.",
@@ -287,9 +287,9 @@ _LANGS = {
         "tui.form.tags_available": "Available:",
         "tui.form.no_tags": "none yet",
         "tui.form.err_title_empty": "Title cannot be empty",
-        "tui.form.err_date_invalid": "Invalid date — use YYYY-MM-DD",
+        "tui.form.err_date_invalid": "Invalid date - use YYYY-MM-DD",
         "tui.form.err_date_incomplete": "Incomplete date",
-        "tui.form.err_date_format": "Invalid format — use YYYY-MM-DD",
+        "tui.form.err_date_format": "Invalid format - use YYYY-MM-DD",
         # ── TUI: prioridades ────────────────────────────────────────────────
         "tui.priority.low": "Low",
         "tui.priority.medium": "Medium",

@@ -35,7 +35,7 @@ def fmt_status(status: TaskStatus) -> str:
 
 def fmt_due(due_date: date | None) -> Text:
     if due_date is None:
-        return Text("—", style="dim")
+        return Text("-", style="dim")
     today = date.today()
     delta = (due_date - today).days
     if delta < 0:
