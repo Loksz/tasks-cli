@@ -21,6 +21,7 @@ from textual.widgets import (
     Label,
     RadioButton,
     RadioSet,
+    Rule,
     SelectionList,
     Static,
 )
@@ -110,85 +111,75 @@ def _detail_markup(task: Task, width: int = 50) -> str:
     urgency = _due_urgency(task.due_date, task.status)
     sync_text, sync_color = _sync_label().get(task.sync_status.value, (t("tui.sync.local"), "dim"))
     due_str = _fmt_due(task.due_date)
-    sep = "[dim]" + "─" * width + "[/dim]"
+    sep = "[dim]" + "─" * min(width, 60) + "[/dim]"
 
-    header = f"[bold {s_color}][ {s_label.upper()} ][/bold {s_color}]  [bold]{task.title}[/bold]"
+    lines: list[str] = []
+
+    # Título como headline principal
+    lines += [f"[bold]{task.title}[/bold]", ""]
+
+    # Estado como dot coloreado + urgencia opcional
+    lines.append(f"[{s_color}]● {s_label.lower()}[/{s_color}]")
     if urgency:
-        header += f"\n{urgency}"
+        lines.append(urgency)
 
-    tags_str = (
-        "  ".join(f"[on dark_green] {tag} [/on dark_green]" for tag in task.tags)
-        if task.tags
-        else f"[dim]{t('tui.detail.no_tags')}[/dim]"
-    )
+    lines += ["", sep, ""]
 
-    lbl_status = t("tui.detail.status")
-    lbl_project = t("tui.detail.project")
-    lbl_priority = t("tui.detail.priority")
-    lbl_due = t("tui.detail.due")
-    project_str = task.project or "[dim]-[/dim]"
+    # Meta: campos en lista alineada
+    lbl_w = 11
+    project_str = task.project if task.project else "[dim]-[/dim]"
 
     if width >= 36:
-        col_w = max(12, width // 2 - 1)
-        meta_lines = [
-            f"[dim]{lbl_status:<{col_w}}{lbl_project}[/dim]",
-            f"[{s_color}]{s_label:<{col_w}}[/{s_color}]{project_str}",
-            "",
-            f"[dim]{lbl_priority:<{col_w}}{lbl_due}[/dim]",
-            f"[{p_color}]{p_label:<{col_w}}[/{p_color}]{due_str}",
+        lines += [
+            f"[dim]{t('tui.detail.priority'):<{lbl_w}}[/dim][{p_color}]{p_label}[/{p_color}]",
+            f"[dim]{t('tui.detail.due'):<{lbl_w}}[/dim]{due_str}",
+            f"[dim]{t('tui.detail.project'):<{lbl_w}}[/dim]{project_str}",
         ]
     else:
-        meta_lines = [
-            f"[dim]{lbl_status}[/dim]",
-            f"  [{s_color}]{s_label}[/{s_color}]",
-            f"[dim]{lbl_priority}[/dim]",
-            f"  [{p_color}]{p_label}[/{p_color}]",
-            f"[dim]{lbl_project}[/dim]",
-            f"  {project_str}",
-            f"[dim]{lbl_due}[/dim]",
-            f"  {due_str}",
+        lines += [
+            f"[dim]{t('tui.detail.priority')}[/dim]  [{p_color}]{p_label}[/{p_color}]",
+            f"[dim]{t('tui.detail.due')}[/dim]  {due_str}",
+            f"[dim]{t('tui.detail.project')}[/dim]  {project_str}",
         ]
 
-    lbl_created = t("tui.detail.created")
-    lbl_modified = t("tui.detail.modified")
-    lbl_completed = t("tui.detail.completed")
-    ts_lines = [
-        f"[dim]{lbl_created:<11}{task.created_at.strftime('%d/%m/%Y  %H:%M')} UTC[/dim]",
-        f"[dim]{lbl_modified:<11}{task.updated_at.strftime('%d/%m/%Y  %H:%M')} UTC[/dim]",
-    ]
-    if task.completed_at:
-        ts_lines.append(f"[dim]{lbl_completed:<11}{task.completed_at.strftime('%d/%m/%Y  %H:%M')} UTC[/dim]")
+    # Tags estilo terminal: #tag
+    lines.append("")
+    if task.tags:
+        lines.append("  ".join(f"[dim]#[/dim][cyan]{tag}[/cyan]" for tag in task.tags))
+    else:
+        lines.append(f"[dim]{t('tui.detail.no_tags')}[/dim]")
 
-    lines = [
-        header,
-        "",
-        sep,
-        "",
-        *meta_lines,
-        "",
-        f"[dim]{t('tui.detail.tags')}[/dim]",
-        tags_str,
-        "",
-        sep,
-    ]
+    lines += ["", sep]
 
+    # Notas (solo si existen)
     if task.notes:
         lines += [
             "",
-            f"[dim]{t('tui.detail.notes')}[/dim]",
+            f"[dim italic]{t('tui.detail.notes')}[/dim italic]",
             "",
             task.notes,
             "",
             sep,
         ]
 
+    # Footer dim: timestamps + sync + short_id
+    lbl_created = t("tui.detail.created")
+    lbl_modified = t("tui.detail.modified")
+    lbl_completed = t("tui.detail.completed")
+
     lines += [
         "",
-        *ts_lines,
+        f"[dim]{lbl_created:<11}{task.created_at.strftime('%d/%m/%Y  %H:%M')}[/dim]",
+        f"[dim]{lbl_modified:<11}{task.updated_at.strftime('%d/%m/%Y  %H:%M')}[/dim]",
+    ]
+    if task.completed_at:
+        lines.append(
+            f"[dim]{lbl_completed:<11}{task.completed_at.strftime('%d/%m/%Y  %H:%M')}[/dim]"
+        )
+
+    lines += [
         "",
-        f"[dim]{t('tui.detail.sync')}  [{sync_color}]{sync_text}[/{sync_color}]  v{task.sync_version}[/dim]",
-        "",
-        f"[dim]{task.id}[/dim]",
+        f"[dim]sync  [{sync_color}]{sync_text}[/{sync_color}]    {task.short_id}[/dim]",
     ]
 
     return "\n".join(lines)
@@ -239,22 +230,22 @@ TaskForm.visible {
 #form-heading {
     text-style: bold;
     border-left: thick $accent;
-    padding: 1 2 1 2;
+    background: $boost;
+    padding: 1 2;
     height: auto;
 }
 
-/* Área scrollable con todos los campos */
-
 #form-scroll {
     height: 1fr;
-    padding: 0 2;
+    padding: 1 2 0 2;
 }
 
-/* Pie fijo: error + botones */
+/* Pie fijo */
 
 #form-footer {
     height: auto;
     padding: 0 2 1 2;
+    border-top: solid $panel;
 }
 
 #form-error {
@@ -271,32 +262,20 @@ TaskForm.visible {
 
 Button { margin-right: 1; }
 
+/* Labels */
+
 .field-label {
     color: $text-muted;
+    text-style: italic;
     margin-top: 1;
     margin-bottom: 0;
 }
 
-.field-section {
-    border: solid $panel;
-    padding: 1;
-    margin-top: 1;
-    height: auto;
-}
+/* Separador entre grupos de campos */
 
-.section-title {
-    color: $accent;
-    text-style: bold;
-    margin-bottom: 0;
-}
-
-/* Sección de campo único (priority, status) */
-
-.field-compact {
-    height: auto;
-    border: solid $panel;
-    padding: 1;
-    margin-top: 1;
+Rule {
+    color: $panel;
+    margin: 1 0;
 }
 
 /* Filas de dos columnas */
@@ -304,9 +283,6 @@ Button { margin-right: 1; }
 .form-row {
     layout: horizontal;
     height: auto;
-    margin-top: 1;
-    border: solid $panel;
-    padding: 1;
 }
 
 .row-col-left {
@@ -319,7 +295,26 @@ Button { margin-right: 1; }
     width: 1fr;
     height: auto;
     padding-left: 1;
-    border-left: solid $panel;
+}
+
+/* Tags + Priority */
+
+.tags-col {
+    width: 2fr;
+    height: auto;
+    padding-right: 1;
+}
+
+.priority-col {
+    width: 1fr;
+    height: auto;
+    padding-left: 1;
+}
+
+/* Estado (solo edición) */
+
+#status-section {
+    height: auto;
 }
 
 /* DateInput con retroalimentación visual */
@@ -332,59 +327,7 @@ DateInput.-valid {
     border: tall $success 40%;
 }
 
-/* Una columna cuando el panel es angosto */
-
-TaskForm.narrow .form-row {
-    layout: vertical;
-}
-
-TaskForm.narrow .row-col-left {
-    width: 1fr;
-    padding-right: 0;
-}
-
-TaskForm.narrow .row-col-right {
-    width: 1fr;
-    padding-left: 0;
-    border-left: none;
-}
-
-TaskForm.narrow .tags-col {
-    width: 1fr;
-    padding-right: 0;
-}
-
-TaskForm.narrow .priority-col {
-    width: 1fr;
-    padding-left: 0;
-    border-left: none;
-}
-
-/* --- Fila Tags + Priority (mismo contenedor que form-row) --- */
-
-.tags-col {
-    width: 2fr;
-    height: auto;
-    padding-right: 1;
-}
-
-.priority-col {
-    width: 1fr;
-    height: auto;
-    padding-left: 1;
-    border-left: solid $panel;
-}
-
-TaskForm.narrow .tags-col {
-    width: 1fr;
-    padding-right: 0;
-}
-
-TaskForm.narrow .priority-col {
-    width: 1fr;
-    padding-left: 0;
-    border-left: none;
-}
+/* Lista de tags */
 
 #tags-list {
     height: 3;
@@ -397,6 +340,21 @@ RadioSet {
     border: none;
     height: auto;
     padding: 0;
+}
+
+/* Modo angosto: una sola columna */
+
+TaskForm.narrow .form-row {
+    layout: vertical;
+}
+
+TaskForm.narrow .row-col-left,
+TaskForm.narrow .row-col-right,
+TaskForm.narrow .tags-col,
+TaskForm.narrow .priority-col {
+    width: 1fr;
+    padding-right: 0;
+    padding-left: 0;
 }
 """
 
@@ -543,7 +501,7 @@ class TagsField(Widget):
         self._all_tags: list[str] = []
 
     def compose(self) -> ComposeResult:
-        yield Label(t("tui.form.tags"), classes="section-title")
+        yield Label(t("tui.form.tags"), classes="field-label")
         yield SelectionList[str](id="tags-list")
         yield TagInput(placeholder=t("tui.form.tag_ph"), id="inp-tag")
 
@@ -605,20 +563,36 @@ class TaskForm(Widget):
 
         # Área scrollable — contiene todos los campos
         with ScrollableContainer(id="form-scroll"):
-            # Titulo y notas
-            yield Vertical(
-                Label(t("tui.form.title"), classes="field-label"),
-                Input(placeholder=t("tui.form.title_ph"), id="inp-title"),
-                Label(t("tui.form.notes"), classes="field-label"),
-                Input(placeholder=t("tui.form.notes_ph"), id="inp-notes"),
-                classes="field-section",
+            # Título y notas
+            yield Label(t("tui.form.title"), classes="field-label")
+            yield Input(placeholder=t("tui.form.title_ph"), id="inp-title")
+            yield Label(t("tui.form.notes"), classes="field-label")
+            yield Input(placeholder=t("tui.form.notes_ph"), id="inp-notes")
+
+            yield Rule()
+
+            # Proyecto | Vence
+            yield Horizontal(
+                Vertical(
+                    Label(t("tui.form.project"), classes="field-label"),
+                    Input(placeholder=t("tui.form.project_ph"), id="inp-project"),
+                    classes="row-col-left",
+                ),
+                Vertical(
+                    Label(t("tui.form.due"), classes="field-label"),
+                    DateInput(id="inp-due"),
+                    classes="row-col-right",
+                ),
+                classes="form-row",
             )
 
-            # Etiquetas (izquierda) + Prioridad (derecha) — mismo contenedor
+            yield Rule()
+
+            # Tags (izquierda) + Prioridad (derecha)
             yield Horizontal(
                 TagsField(classes="tags-col"),
                 Vertical(
-                    Label(t("tui.form.priority"), classes="section-title"),
+                    Label(t("tui.form.priority"), classes="field-label"),
                     RadioSet(
                         RadioButton(t("tui.priority.low")),
                         RadioButton(t("tui.priority.medium"), value=True),
@@ -630,33 +604,16 @@ class TaskForm(Widget):
                 classes="form-row",
             )
 
-            # Estado — columna única, solo visible al editar
-            yield Vertical(
-                Label(t("tui.form.status"), classes="section-title"),
-                RadioSet(
+            # Estado — solo visible al editar
+            with Vertical(id="status-section"):
+                yield Rule()
+                yield Label(t("tui.form.status"), classes="field-label")
+                yield RadioSet(
                     RadioButton(t("tui.status.pending"), value=True),
                     RadioButton(t("tui.status.in_progress")),
                     RadioButton(t("tui.status.cancelled")),
                     id="inp-status",
-                ),
-                id="status-section",
-                classes="field-compact",
-            )
-
-            # Proyecto | Vence
-            yield Horizontal(
-                Vertical(
-                    Label(t("tui.form.project"), classes="section-title"),
-                    Input(placeholder=t("tui.form.project_ph"), id="inp-project"),
-                    classes="row-col-left",
-                ),
-                Vertical(
-                    Label(t("tui.form.due"), classes="section-title"),
-                    DateInput(id="inp-due"),
-                    classes="row-col-right",
-                ),
-                classes="form-row",
-            )
+                )
 
         # Pie fijo — error y botones siempre visibles
         with Vertical(id="form-footer"):
